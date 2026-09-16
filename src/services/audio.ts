@@ -1,7 +1,11 @@
 // 音频服务：包含TTS标准发音、Web Audio API合成趣味音效、MediaRecorder 3秒跟读录音
 import { TextToSpeech } from '@capacitor-community/text-to-speech'
 import { Capacitor } from '@capacitor/core'
-import { measureNativeTtsPlayback, shouldFallbackFromNativeTts } from './ttsPlayback'
+import {
+  buildOnlineTtsUrls,
+  measureNativeTtsPlayback,
+  shouldFallbackFromNativeTts,
+} from './ttsPlayback'
 
 let currentAudio: HTMLAudioElement | null = null
 
@@ -60,17 +64,11 @@ export async function speakText(text: string, lang: 'zh' | 'en' = 'zh', rate = 0
 
   // 第二层：高音质真人网络发音流 (支持英文美音与中文常见词汇)
   try {
-    let url = ''
-    if (lang === 'en') {
-      const enOnly = cleanText.replace(/[^a-zA-Z\s'-]/g, '').trim() || cleanText
-      url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(enOnly)}&type=2`
+    const urls = buildOnlineTtsUrls(cleanText, lang)
+    for (const url of urls) {
       await playAudioUrl(url)
-      return
-    } else if (cleanText.length <= 6) {
-      url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(cleanText)}&le=zh`
-      await playAudioUrl(url)
-      return
     }
+    if (urls.length > 0) return
   } catch (netErr) {
     console.warn('在线发音流播放失败，转入浏览器原生 Web Speech:', netErr)
   }
